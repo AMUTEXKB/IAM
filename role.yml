@@ -1,0 +1,411 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Audit Framework LOB Resources",
+    "Parameters": {
+        "DeployVersion": {
+            "Type": "String",
+            "Description": "Deploy Version for version tracking."
+        },
+        "AuditAccountRoleArns": {
+            "Type": "String",
+            "Description": "The audit account IDs (comma separated string) that need trust relationship to GD-AuditFramework-ExecutorRole."
+        },
+        "AuditAccountParamBuckets": {
+            "Type": "String",
+            "Description": "The audit account's params  bucket."
+        },
+        "AuditAccountResultsBuckets": {
+            "Type": "String",
+            "Description": "The audit account's results  bucket."
+        },
+        "SecurityDL": {
+            "Type": "String",
+            "Description": "The SecurityDL to which notifications should be sent to"
+        }
+    },
+    "Resources": {
+        "AuditSNSTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+                "DisplayName": "AuditSNSTopic",
+                "Subscription": [
+                    {
+                        "Endpoint": {
+                            "Ref": "SecurityDL"
+                        },
+                        "Protocol": "email"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "ResourceType",
+                        "Value": "SNS"
+                    }
+                ],
+                "TopicName": "AuditSNSTopic"
+            }
+        },
+        "GDAuditFrameworkECSAccess": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": "GD-AuditFramework-ECS-Access",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "ecs:RunTask",
+                                "ecs:RegisterTaskDefinition",
+                                "ecs:DescribeTaskDefinition"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "iam:PassRole"
+                            ],
+                            "Resource": [
+                                "arn:aws:iam::*:role/GD-AuditFramework-TaskRole",
+                                "arn:aws:iam::*:role/GD-AuditFramework-TaskExecutionRole"
+                            ],
+                            "Condition": {
+                                "StringLike": {
+                                    "iam:PassedToService": "ecs-tasks.amazonaws.com"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "GDAuditFrameworkS3Access": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": "GD-AuditFramework-S3-Access",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:GetObject"
+                            ],
+                            "Resource": {
+                                "Fn::Split": [
+                                    ",",
+                                    {
+                                        "Ref": "AuditAccountParamBuckets"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:PutObject",
+                                "s3:PutObjectAcl"
+                            ],
+                            "Resource": {
+                                "Fn::Split": [
+                                    ",",
+                                    {
+                                        "Ref": "AuditAccountResultsBuckets"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "GDAuditFrameworkCloudWatchAccess": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": "GD-AuditFramework-CloudWatch-Access",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "logs:CreateLogGroup"
+                            ],
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            }
+        },
+        "GDAuditFrameworkSecurityHubAccess": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": "GD-AuditFramework-SecurityHub-Access",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "securityhub:BatchImportFindings",
+                                "securityhub:BatchUpdateFindings"
+                            ],
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            }
+        },
+        "GDAuditFrameworkSSMAccess": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": "GD-AuditFramework-SSM-Access",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "ssm:PutParameter",
+                                "ssm:Get*",
+                                "ssm:DeleteParameter"
+                            ],
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:ssm:*:${AWS::AccountId}:parameter/CirrusScan/*"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "GDAuditFrameworkTaskExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "GD-AuditFramework-TaskExecutionRole",
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+                    {
+                        "Ref": "GDAuditFrameworkCloudWatchAccess"
+                    }
+                ],
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "ecs-tasks.amazonaws.com"
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        "GDAuditFrameworkContainerScanRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "GD-AuditFramework-ContainerScan-Role",
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+                    "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess",
+                    {
+                        "Ref": "GDAuditFrameworkContainerAssumeRolePolicy"
+                    },
+                    {
+                        "Ref": "GDAuditFrameworkContainerScanLoggingPolicy"
+                    }
+                ],
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "ec2.amazonaws.com"
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        "GDAuditFrameworkContainerAssumeRolePolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": "GD-AuditFramework-ContainerScan-AssumeRole-Policy",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Resource": "arn:aws:iam::*:role/GD-AuditFramework-ContainerScan-AssumeRole"
+                        }
+                    ]
+                }
+            }
+        },
+        "GDAuditFrameworkContainerScanLoggingPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": "GD-AuditFramework-ContainerScan-Logging-Policy",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "kinesis:PutRecord"
+                            ],
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:kinesis:*:${AWS::AccountId}:stream/gd-*"
+                                
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "ContainerScanServerInstanceProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Roles": [
+                    {
+                        "Ref": "GDAuditFrameworkContainerScanRole"
+                    }
+                ],
+                "InstanceProfileName": "GD-AuditFramework-ContainerScan-InstanceProfile"
+            }
+        },
+        "GDAuditFrameworkAssumeRoleToSecretsManagerReadOnlyRole": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": "GD-AuditFramework-AssumeRole-To-SecretsManager-ReadRole",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Resource": "arn:aws:iam::*:role/GD-AuditFramework-SecretsManagerReadOnlyRole"
+                        }
+                    ]
+                }
+            }
+        },
+        "GDAuditFrameworkPublishToSNSTopic": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": "GD-AuditFramework-Publish-To-SNSTopic",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "SNS:Publish"
+                            ],
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:sns:*:${AWS::AccountId}:AuditSNSTopic"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "GDAuditServiceCatalogAccess": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": "GD-AuditFramework-ServiceCatalog-Access",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "servicecatalog:*"
+                            ],
+                            "Resource": "*",
+                            "Condition": {
+                                "StringEquals": {
+                                    "servicecatalog:roleLevel": "self"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "GDAuditFrameworkTaskRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "GD-AuditFramework-TaskRole",
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/ReadOnlyAccess",
+                    "arn:aws:iam::aws:policy/SecurityAudit",
+                    {
+                        "Ref": "GDAuditServiceCatalogAccess"
+                    },
+                    {
+                        "Ref": "GDAuditFrameworkECSAccess"
+                    },
+                    {
+                        "Ref": "GDAuditFrameworkS3Access"
+                    },
+                    {
+                        "Ref": "GDAuditFrameworkSSMAccess"
+                    },
+                    {
+                        "Ref": "GDAuditFrameworkSecurityHubAccess"
+                    },
+                    {
+                        "Ref": "GDAuditFrameworkAssumeRoleToSecretsManagerReadOnlyRole"
+                    },
+                    {
+                        "Ref": "GDAuditFrameworkPublishToSNSTopic"
+                    }
+                ],
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "ecs-tasks.amazonaws.com",
+                                "AWS": {
+                                    "Fn::Split": [
+                                        ",",
+                                        {
+                                            "Ref": "AuditAccountRoleArns"
+                                        }
+                                    ]
+                                }
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "DeployVersionOutput": {
+            "Description": "Deploy Version of Cloudfoundation",
+            "Value": {
+                "Ref": "DeployVersion"
+            }
+        }
+    }
+}
