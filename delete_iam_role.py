@@ -36,7 +36,7 @@ def lambda_handler(event, context):
         sts = boto3.client("sts") 
         logger.info(f"Starting scan of new account {account_num}")
         logger.info(f"account_num: {account_num}")
-        role_arn = f"arn:aws:iam::{account_num}:role/GoDaddy_assumed_role"
+        role_arn = f"arn:aws:iam::{account_num}:role/KB_assumed_role"
         sts_auth = sts.assume_role(RoleArn=role_arn, RoleSessionName="acquired_account_role")
         credentials = sts_auth["Credentials"]
         
@@ -247,7 +247,7 @@ def detach_role_policy(role_name,policy_name):
     sts = boto3.client("sts") 
     logger.info(f"Starting scan of new account {account_num}")
     logger.info(f"account_num: {account_num}")
-    role_arn = f"arn:aws:iam::{account_num}:role/GoDaddy_assumed_role"
+    role_arn = f"arn:aws:iam::{account_num}:role/KB_assumed_role"
     sts_auth = sts.assume_role(RoleArn=role_arn, RoleSessionName="acquired_account_role")
     credentials = sts_auth["Credentials"]
     
@@ -271,7 +271,7 @@ def delete__policy(policy_name):
     sts = boto3.client("sts") 
     logger.info(f"Starting scan of new account {account_num}")
     logger.info(f"account_num: {account_num}")
-    role_arn = f"arn:aws:iam::{account_num}:role/GoDaddy_assumed_role"
+    role_arn = f"arn:aws:iam::{account_num}:role/KB_assumed_role"
     sts_auth = sts.assume_role(RoleArn=role_arn, RoleSessionName="acquired_account_role")
     credentials = sts_auth["Credentials"]
     
@@ -293,7 +293,7 @@ def delete_role(role_name):
     sts = boto3.client("sts") 
     logger.info(f"Starting scan of new account {account_num}")
     logger.info(f"account_num: {account_num}")
-    role_arn = f"arn:aws:iam::{account_num}:role/GoDaddy_assumed_role"
+    role_arn = f"arn:aws:iam::{account_num}:role/KB_assumed_role"
     sts_auth = sts.assume_role(RoleArn=role_arn, RoleSessionName="acquired_account_role")
     credentials = sts_auth["Credentials"]
     
@@ -315,7 +315,7 @@ def detach_AWS_managed_role_policy(role_name,policy_arn):
     sts = boto3.client("sts") 
     logger.info(f"Starting scan of new account {account_num}")
     logger.info(f"account_num: {account_num}")
-    role_arn = f"arn:aws:iam::{account_num}:role/GoDaddy_assumed_role"
+    role_arn = f"arn:aws:iam::{account_num}:role/KB_assumed_role"
     sts_auth = sts.assume_role(RoleArn=role_arn, RoleSessionName="acquired_account_role")
     credentials = sts_auth["Credentials"]
     
