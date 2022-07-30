@@ -28,7 +28,7 @@ def lambda_handler(event, context):
         sts = boto3.client("sts") 
         logger.info(f"Starting scan of new account {account_num}")
         logger.info(f"account_num: {account_num}")
-        role_arn = f"arn:aws:iam::{account_num}:role/GoDaddy_assumed_role"
+        role_arn = f"arn:aws:iam::{account_num}:role/KB_assumed_role"
         sts_auth = sts.assume_role(RoleArn=role_arn, RoleSessionName="acquired_account_role")
         credentials = sts_auth["Credentials"]
         
@@ -367,8 +367,8 @@ def lambda_handler(event, context):
                                     "iam:PassRole"
                                 ],
                                 "Resource": [
-                                    "arn:aws:iam::*:role/GD-AuditFramework-TaskRole",
-                                    "arn:aws:iam::*:role/GD-AuditFramework-TaskExecutionRole"
+                                    "arn:aws:iam::*:role/KB-AuditFramework-TaskRole",
+                                    "arn:aws:iam::*:role/KB-AuditFramework-TaskExecutionRole"
                                 ],
                                 "Condition": {
                                     "StringLike": {
